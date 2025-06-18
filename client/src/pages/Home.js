@@ -242,6 +242,57 @@ const Home = () => {
           </Box>
         </Box>
       </Container>
+
+      {/* Footer/About Section */}
+      <Box
+        sx={{
+          bgcolor: 'grey.100',
+          py: 6,
+          mt: 6,
+          borderTop: 1,
+          borderColor: 'grey.300'
+        }}
+      >
+        <Container maxWidth="lg">
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'center', md: 'flex-start' },
+              gap: 3
+            }}
+          >
+            <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+              <Typography variant="h5" gutterBottom color="primary">
+                О питомнике Zelenas
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400 }}>
+                Специализируемся на разведении здоровых и красивых пуделей. 
+                Мы заботимся о каждом щенке и обеспечиваем поддержку нашим клиентам.
+              </Typography>
+            </Box>
+            
+            <Box sx={{ textAlign: { xs: 'center', md: 'right' } }}>
+              <Typography variant="h6" gutterBottom color="primary">
+                Разработчик сайта
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                Зеленин Алексей Александрович
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Telegram: @dog_29
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'grey.300', textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              © 2025 Питомник Zelenas.
+            </Typography>
+          </Box>
+        </Container>
+      </Box>
     </Box>
   );
 };

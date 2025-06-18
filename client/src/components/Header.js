@@ -84,15 +84,6 @@ const Header = () => {
             >
               Новости
             </Button>
-            {isOwner && (
-              <Button 
-                color="inherit" 
-                component={Link} 
-                to="/dashboard"
-              >
-                Управление
-              </Button>
-            )}
           </Box>
 
           {/* Auth Buttons / User Menu */}
@@ -167,13 +158,6 @@ const Header = () => {
               >
                 Новости
               </MenuItem>
-              {isOwner && (
-                <MenuItem 
-                  onClick={() => { handleMenuClose(); navigate('/dashboard'); }}
-                >
-                  Управление
-                </MenuItem>
-              )}
               {isAuthenticated ? (
                 <>
                   <MenuItem 

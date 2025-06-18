@@ -22,7 +22,7 @@ import {
   IconButton,
   Alert
 } from '@mui/material';
-import { Add, Edit, Delete, Pets, Article } from '@mui/icons-material';
+import { Add, Edit, Delete, Pets, Article, PhotoCamera, Close } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
@@ -46,6 +46,8 @@ const OwnerDashboard = () => {
     vaccinations: false,
     documents: false
   });
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [imagePreview, setImagePreview] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -108,6 +110,24 @@ const OwnerDashboard = () => {
     setOpenPuppyDialog(false);
     setOpenNewsDialog(false);
     setEditingItem(null);
+    setSelectedImages([]);
+    setImagePreview([]);
+  };
+
+  const handleImageChange = (event) => {
+    const files = Array.from(event.target.files);
+    setSelectedImages(files);
+    
+    // Создаем превью для изображений
+    const previews = files.map(file => URL.createObjectURL(file));
+    setImagePreview(previews);
+  };
+
+  const removeImage = (index) => {
+    const newImages = selectedImages.filter((_, i) => i !== index);
+    const newPreviews = imagePreview.filter((_, i) => i !== index);
+    setSelectedImages(newImages);
+    setImagePreview(newPreviews);
   };
 
   const handleSubmit = async (e) => {
@@ -123,7 +143,24 @@ const OwnerDashboard = () => {
       } else {
         // Create new item
         if (openPuppyDialog) {
-          await axios.post('/api/puppies', formData);
+          // Создаем FormData для отправки изображений
+          const formDataToSend = new FormData();
+          
+          // Добавляем данные формы
+          Object.keys(formData).forEach(key => {
+            formDataToSend.append(key, formData[key]);
+          });
+          
+          // Добавляем изображения
+          selectedImages.forEach((image, index) => {
+            formDataToSend.append('images', image);
+          });
+          
+          await axios.post('/api/puppies', formDataToSend, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
         } else {
           await axios.post('/api/news', formData);
         }
@@ -358,6 +395,77 @@ const OwnerDashboard = () => {
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     required
                   />
+                </Grid>
+                
+                {/* Поле для загрузки изображений */}
+                <Grid item xs={12}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Фотографии щенка
+                    </Typography>
+                    <input
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      id="image-upload"
+                      multiple
+                      type="file"
+                      onChange={handleImageChange}
+                    />
+                    <label htmlFor="image-upload">
+                      <Button
+                        variant="outlined"
+                        component="span"
+                        startIcon={<PhotoCamera />}
+                        sx={{ mb: 2 }}
+                      >
+                        Выбрать фотографии
+                      </Button>
+                    </label>
+                    
+                    {/* Превью изображений */}
+                    {imagePreview.length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {imagePreview.map((preview, index) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              position: 'relative',
+                              width: 100,
+                              height: 100,
+                              border: '1px solid #ddd',
+                              borderRadius: 1,
+                              overflow: 'hidden'
+                            }}
+                          >
+                            <img
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                            <IconButton
+                              size="small"
+                              sx={{
+                                position: 'absolute',
+                                top: 2,
+                                right: 2,
+                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                                }
+                              }}
+                              onClick={() => removeImage(index)}
+                            >
+                              <Close fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
                 </Grid>
               </Grid>
             </Box>

@@ -13,6 +13,7 @@ import OwnerDashboard from './pages/OwnerDashboard';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 
 function App() {
   return (
@@ -26,12 +27,13 @@ function App() {
             <Route path="/puppies/:id" element={<PuppyDetail />} />
             <Route path="/news" element={<News />} />
             <Route path="/news/:id" element={<NewsDetail />} />
+            <Route path="/login" element={<Login />} />
             <Route 
               path="/dashboard" 
               element={
-                <ProtectedRoute requiredRole="owner">
+                <AdminRoute>
                   <OwnerDashboard />
-                </ProtectedRoute>
+                </AdminRoute>
               } 
             />
             <Route 
@@ -50,7 +52,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route path="/login" element={<Login />} />
           </Routes>
         </Box>
       </Box>

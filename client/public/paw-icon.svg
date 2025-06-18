@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#228B22"/>
+  <ellipse cx="16" cy="22" rx="9" ry="7" fill="white"/>
+  <ellipse cx="9" cy="12" rx="3" ry="3.2" fill="white"/>
+  <ellipse cx="16" cy="9" rx="3" ry="3.2" fill="white"/>
+  <ellipse cx="23" cy="12" rx="3" ry="3.2" fill="white"/>
+  <!-- Нижняя выемка -->
+  <ellipse cx="16" cy="28" rx="5" ry="2" fill="#228B22"/>
+</svg>

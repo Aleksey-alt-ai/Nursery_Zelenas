@@ -1,53 +1,63 @@
 import React, { useState } from 'react';
 import {
   Container,
+  Box,
   Paper,
   Typography,
   TextField,
   Button,
-  Box,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
+import { Pets } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Pets } from '@mui/icons-material';
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
-    phone: '+7',
-    password: 'Admin'
+    password: ''
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setError('');
 
-    // Validate phone number
-    if (!formData.phone.match(/^\+7\d{10}$/)) {
-      setError('Номер телефона должен быть в формате +7XXXXXXXXXX');
-      setLoading(false);
-      return;
-    }
-
-    const result = await login(formData.phone, formData.password);
-    
-    if (result.success) {
-      navigate('/');
+    // Проверяем пароль
+    if (formData.password === 'bravia_1978') {
+      // Имитируем успешный вход
+      const mockUser = {
+        id: 1,
+        phone: '+70000000001',
+        name: 'Владелец питомника',
+        role: 'owner'
+      };
+      
+      // Сохраняем в localStorage
+      localStorage.setItem('token', 'mock-token');
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      
+      // Устанавливаем флаг, что пользователь прошел через страницу входа
+      sessionStorage.setItem('hasVisitedLogin', 'true');
+      
+      // Обновляем контекст
+      login(formData.password);
+      
+      // Перенаправляем на панель управления
+      navigate('/dashboard');
     } else {
-      setError(result.message);
+      setError('Неверный пароль');
     }
     
     setLoading(false);
@@ -76,18 +86,6 @@ const Login = () => {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Номер телефона"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              margin="normal"
-              required
-              autoFocus
-              helperText="Формат: +7XXXXXXXXXX"
-            />
-            
-            <TextField
-              fullWidth
               label="Пароль"
               name="password"
               type="password"
@@ -95,6 +93,7 @@ const Login = () => {
               onChange={handleChange}
               margin="normal"
               required
+              autoFocus
             />
 
             <Button
@@ -105,7 +104,7 @@ const Login = () => {
               disabled={loading}
               sx={{ mt: 3, mb: 2 }}
             >
-              {loading ? 'Вход...' : 'Войти'}
+              {loading ? <CircularProgress size={24} /> : 'Войти'}
             </Button>
           </Box>
         </Paper>

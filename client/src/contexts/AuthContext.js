@@ -28,10 +28,15 @@ export const AuthProvider = ({ children }) => {
   // Check if user is authenticated on app start
   useEffect(() => {
     const checkAuth = async () => {
-      if (token) {
+      const savedToken = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('user');
+      
+      if (savedToken && savedUser) {
         try {
-          const response = await axios.get('/api/auth/me');
-          setUser(response.data.user);
+          // Для локальной аутентификации просто используем сохраненные данные
+          const userData = JSON.parse(savedUser);
+          setUser(userData);
+          setToken(savedToken);
         } catch (error) {
           console.error('Auth check failed:', error);
           logout();
@@ -43,16 +48,33 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, [token]);
 
-  const login = async (phone, password) => {
+  const login = async (password) => {
     try {
-      const response = await axios.post('/api/auth/login', { phone, password });
-      const { token: newToken, user: userData } = response.data;
-      
-      setToken(newToken);
-      setUser(userData);
-      localStorage.setItem('token', newToken);
-      
-      return { success: true };
+      // Локальная проверка для владельца - проверяем только пароль
+      if (password === 'bravia_1978') {
+        const userData = {
+          id: 1,
+          phone: '+70000000001',
+          name: 'Владелец питомника',
+          role: 'owner'
+        };
+        const mockToken = 'mock-token-' + Date.now();
+        
+        setToken(mockToken);
+        setUser(userData);
+        localStorage.setItem('token', mockToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Устанавливаем флаг, что пользователь прошел через страницу входа
+        sessionStorage.setItem('hasVisitedLogin', 'true');
+        
+        return { success: true };
+      } else {
+        return { 
+          success: false, 
+          message: 'Неверный пароль' 
+        };
+      }
     } catch (error) {
       return { 
         success: false, 
@@ -87,6 +109,8 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('hasVisitedLogin');
     delete axios.defaults.headers.common['Authorization'];
   };
 
