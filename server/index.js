@@ -21,6 +21,9 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// === Serve React static files ===
+app.use(express.static(path.join(__dirname, '../client/build')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/puppies', puppyRoutes);
@@ -30,6 +33,11 @@ app.use('/api/dogs', dogRoutes);
 
 // Инициализация базы данных
 syncDatabase();
+
+// SPA fallback: send index.html for any unknown route (after API and uploads)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
