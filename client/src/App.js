@@ -14,6 +14,7 @@ import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import Dogs from './pages/Dogs';
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route path="/dogs" element={<Dogs />} />
           </Routes>
         </Box>
       </Box>

@@ -48,9 +48,15 @@ const OwnerDashboard = () => {
   });
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreview, setImagePreview] = useState([]);
+  const [dogs, setDogs] = useState([]);
+  const [openDogDialog, setOpenDogDialog] = useState(false);
+  const [dogForm, setDogForm] = useState({ name: '', achievements: '', description: '' });
+  const [dogImage, setDogImage] = useState(null);
+  const [editingDog, setEditingDog] = useState(null);
 
   useEffect(() => {
     fetchData();
+    fetchDogs();
   }, []);
 
   const fetchData = async () => {
@@ -65,6 +71,15 @@ const OwnerDashboard = () => {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDogs = async () => {
+    try {
+      const res = await axios.get('/api/dogs');
+      setDogs(res.data);
+    } catch (error) {
+      console.error('Error fetching dogs:', error);
     }
   };
 
@@ -187,6 +202,82 @@ const OwnerDashboard = () => {
     }
   };
 
+  const handleOpenDogDialog = (dog = null) => {
+    if (dog) {
+      setEditingDog(dog);
+      setDogForm({
+        name: dog.name || '',
+        achievements: dog.achievements || '',
+        description: dog.description || '',
+      });
+      setDogImage(null);
+    } else {
+      setEditingDog(null);
+      setDogForm({ name: '', achievements: '', description: '' });
+      setDogImage(null);
+    }
+    setOpenDogDialog(true);
+  };
+
+  const handleCloseDogDialog = () => {
+    setOpenDogDialog(false);
+    setEditingDog(null);
+    setDogForm({ name: '', achievements: '', description: '' });
+    setDogImage(null);
+  };
+
+  const handleDogImageChange = (e) => {
+    setDogImage(e.target.files[0]);
+  };
+
+  const handleDogFormChange = (e) => {
+    setDogForm({ ...dogForm, [e.target.name]: e.target.value });
+  };
+
+  const handleDogSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append('name', dogForm.name);
+      formData.append('achievements', dogForm.achievements);
+      formData.append('description', dogForm.description);
+      if (dogImage) formData.append('photo', dogImage);
+      if (editingDog) {
+        await axios.put(`/api/dogs/${editingDog.id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        await axios.post('/api/dogs', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+      handleCloseDogDialog();
+      fetchDogs();
+    } catch (error) {
+      console.error('Error saving dog:', error);
+    }
+  };
+
+  const handleDeleteDog = async (id) => {
+    if (window.confirm('Удалить собаку?')) {
+      try {
+        await axios.delete(`/api/dogs/${id}`);
+        fetchDogs();
+      } catch (error) {
+        console.error('Error deleting dog:', error);
+      }
+    }
+  };
+
+  const handleTogglePuppyStatus = async (puppy) => {
+    try {
+      await axios.put(`/api/puppies/${puppy._id}`, { is_available: !puppy.isAvailable });
+      fetchData();
+    } catch (error) {
+      console.error('Ошибка при смене статуса щенка:', error);
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -232,11 +323,20 @@ const OwnerDashboard = () => {
                       {puppy.breed} • {puppy.age} мес. • {puppy.price.toLocaleString()} ₽
                     </Typography>
                     <Chip 
-                      label={puppy.isAvailable ? 'Доступен' : 'Продано'} 
+                      label={puppy.isAvailable ? 'На продаже' : 'Продано'} 
                       color={puppy.isAvailable ? 'success' : 'default'}
                       size="small"
-                      sx={{ mt: 1 }}
+                      sx={{ mt: 1, mr: 1 }}
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color={puppy.isAvailable ? 'warning' : 'success'}
+                      onClick={() => handleTogglePuppyStatus(puppy)}
+                      sx={{ mt: 1 }}
+                    >
+                      {puppy.isAvailable ? 'Отметить как продано' : 'Вернуть на продажу'}
+                    </Button>
                   </CardContent>
                   <CardActions>
                     <Button size="small" onClick={() => handleOpenDialog('puppy', puppy)}>
@@ -308,6 +408,36 @@ const OwnerDashboard = () => {
                   Нет новостей
                 </Typography>
               )}
+            </Paper>
+          </Grid>
+
+          {/* Dogs Section */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, mb: 4 }}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                <Typography variant="h6"><Pets sx={{ mr: 1 }} /> Наши собаки</Typography>
+                <Button variant="contained" startIcon={<Add />} onClick={() => handleOpenDogDialog()}>Добавить собаку</Button>
+              </Box>
+              <Grid container spacing={2}>
+                {dogs.map((dog) => (
+                  <Grid item xs={12} sm={6} md={4} key={dog.id}>
+                    <Card>
+                      {dog.photo && (
+                        <img src={`/${dog.photo.replace('\\', '/')}`} alt={dog.name} style={{ width: '100%', maxHeight: 200, objectFit: 'cover' }} />
+                      )}
+                      <CardContent>
+                        <Typography variant="h6">{dog.name}</Typography>
+                        {dog.achievements && <Typography variant="body2"><b>Достижения:</b> {dog.achievements}</Typography>}
+                        {dog.description && <Typography variant="body2">{dog.description}</Typography>}
+                      </CardContent>
+                      <CardActions>
+                        <IconButton onClick={() => handleOpenDogDialog(dog)}><Edit /></IconButton>
+                        <IconButton onClick={() => handleDeleteDog(dog.id)}><Delete /></IconButton>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
             </Paper>
           </Grid>
         </Grid>
@@ -515,6 +645,61 @@ const OwnerDashboard = () => {
               {editingItem ? 'Сохранить' : 'Добавить'}
             </Button>
           </DialogActions>
+        </Dialog>
+
+        {/* Dog Dialog */}
+        <Dialog open={openDogDialog} onClose={handleCloseDogDialog}>
+          <DialogTitle>{editingDog ? 'Редактировать собаку' : 'Добавить собаку'}</DialogTitle>
+          <form onSubmit={handleDogSubmit} encType="multipart/form-data">
+            <DialogContent>
+              <TextField
+                margin="dense"
+                label="Имя"
+                name="name"
+                value={dogForm.name}
+                onChange={handleDogFormChange}
+                fullWidth
+                required
+              />
+              <TextField
+                margin="dense"
+                label="Достижения"
+                name="achievements"
+                value={dogForm.achievements}
+                onChange={handleDogFormChange}
+                fullWidth
+                multiline
+              />
+              <TextField
+                margin="dense"
+                label="Описание"
+                name="description"
+                value={dogForm.description}
+                onChange={handleDogFormChange}
+                fullWidth
+                multiline
+              />
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<PhotoCamera />}
+                sx={{ mt: 2 }}
+              >
+                {editingDog ? 'Заменить фото' : 'Загрузить фото'}
+                <input type="file" hidden accept="image/*" onChange={handleDogImageChange} />
+              </Button>
+              {editingDog && editingDog.photo && (
+                <Box mt={2}><img src={`/${editingDog.photo.replace('\\', '/')}`} alt="dog" style={{ maxWidth: 150 }} /></Box>
+              )}
+              {dogImage && (
+                <Box mt={2}><img src={URL.createObjectURL(dogImage)} alt="preview" style={{ maxWidth: 150 }} /></Box>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDogDialog}>Отмена</Button>
+              <Button type="submit" variant="contained">Сохранить</Button>
+            </DialogActions>
+          </form>
         </Dialog>
       </Box>
     </Container>

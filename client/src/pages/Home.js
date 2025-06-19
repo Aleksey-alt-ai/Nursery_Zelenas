@@ -278,7 +278,7 @@ const Home = () => {
                 Разработчик сайта
               </Typography>
               <Typography variant="body1" gutterBottom>
-                Зеленин Алексей Александрович
+                А. А. Зеленин
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Telegram: @dog_29

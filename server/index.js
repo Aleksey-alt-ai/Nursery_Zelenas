@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const puppyRoutes = require('./routes/puppies');
 const newsRoutes = require('./routes/news');
 const messageRoutes = require('./routes/messages');
+const dogRoutes = require('./routes/dogs');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/puppies', puppyRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/dogs', dogRoutes);
 
 // Инициализация базы данных
 syncDatabase();

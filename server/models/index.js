@@ -3,6 +3,7 @@ const User = require('./User');
 const Puppy = require('./Puppy');
 const News = require('./News');
 const Message = require('./Message');
+const Dog = require('./Dog');
 
 // Определение связей между моделями
 User.hasMany(Puppy, { foreignKey: 'owner_id', as: 'puppies' });
@@ -35,5 +36,6 @@ module.exports = {
   Puppy,
   News,
   Message,
+  Dog,
   syncDatabase
 }; 

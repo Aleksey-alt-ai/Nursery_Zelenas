@@ -84,6 +84,13 @@ const Header = () => {
             >
               Новости
             </Button>
+            <Button 
+              color="inherit" 
+              component={Link} 
+              to="/dogs"
+            >
+              Наши собаки
+            </Button>
           </Box>
 
           {/* Auth Buttons / User Menu */}
@@ -157,6 +164,11 @@ const Header = () => {
                 onClick={() => { handleMenuClose(); navigate('/news'); }}
               >
                 Новости
+              </MenuItem>
+              <MenuItem 
+                onClick={() => { handleMenuClose(); navigate('/dogs'); }}
+              >
+                Наши собаки
               </MenuItem>
               {isAuthenticated ? (
                 <>
