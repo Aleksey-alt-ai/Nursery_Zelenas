@@ -35,7 +35,7 @@ const OwnerDashboard = () => {
   const [openNewsDialog, setOpenNewsDialog] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
-    title: '',
+    name: '',
     breed: '',
     age: '',
     price: '',
@@ -44,7 +44,10 @@ const OwnerDashboard = () => {
     color: '',
     weight: '',
     vaccinations: false,
-    documents: false
+    documents: false,
+    title: '',
+    content: '',
+    size: '',
   });
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreview, setImagePreview] = useState([]);
@@ -53,6 +56,8 @@ const OwnerDashboard = () => {
   const [dogForm, setDogForm] = useState({ name: '', achievements: '', description: '' });
   const [dogImage, setDogImage] = useState(null);
   const [editingDog, setEditingDog] = useState(null);
+  const [newsImage, setNewsImage] = useState(null);
+  const [newsError, setNewsError] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -80,125 +85,6 @@ const OwnerDashboard = () => {
       setDogs(res.data);
     } catch (error) {
       console.error('Error fetching dogs:', error);
-    }
-  };
-
-  const handleOpenDialog = (type, item = null) => {
-    if (item) {
-      setEditingItem(item);
-      setFormData({
-        title: item.title || '',
-        breed: item.breed || '',
-        age: item.age || '',
-        price: item.price || '',
-        description: item.description || '',
-        gender: item.gender || '',
-        color: item.color || '',
-        weight: item.weight || '',
-        vaccinations: item.vaccinations || false,
-        documents: item.documents || false
-      });
-    } else {
-      setEditingItem(null);
-      setFormData({
-        title: '',
-        breed: '',
-        age: '',
-        price: '',
-        description: '',
-        gender: '',
-        color: '',
-        weight: '',
-        vaccinations: false,
-        documents: false
-      });
-    }
-    
-    if (type === 'puppy') {
-      setOpenPuppyDialog(true);
-    } else {
-      setOpenNewsDialog(true);
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setOpenPuppyDialog(false);
-    setOpenNewsDialog(false);
-    setEditingItem(null);
-    setSelectedImages([]);
-    setImagePreview([]);
-  };
-
-  const handleImageChange = (event) => {
-    const files = Array.from(event.target.files);
-    setSelectedImages(files);
-    
-    // Создаем превью для изображений
-    const previews = files.map(file => URL.createObjectURL(file));
-    setImagePreview(previews);
-  };
-
-  const removeImage = (index) => {
-    const newImages = selectedImages.filter((_, i) => i !== index);
-    const newPreviews = imagePreview.filter((_, i) => i !== index);
-    setSelectedImages(newImages);
-    setImagePreview(newPreviews);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingItem) {
-        // Update existing item
-        if (openPuppyDialog) {
-          await axios.put(`/api/puppies/${editingItem._id}`, formData);
-        } else {
-          await axios.put(`/api/news/${editingItem._id}`, formData);
-        }
-      } else {
-        // Create new item
-        if (openPuppyDialog) {
-          // Создаем FormData для отправки изображений
-          const formDataToSend = new FormData();
-          
-          // Добавляем данные формы
-          Object.keys(formData).forEach(key => {
-            formDataToSend.append(key, formData[key]);
-          });
-          
-          // Добавляем изображения
-          selectedImages.forEach((image, index) => {
-            formDataToSend.append('images', image);
-          });
-          
-          await axios.post('/api/puppies', formDataToSend, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
-        } else {
-          await axios.post('/api/news', formData);
-        }
-      }
-      handleCloseDialog();
-      fetchData();
-    } catch (error) {
-      console.error('Error saving item:', error);
-    }
-  };
-
-  const handleDelete = async (type, id) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот элемент?')) {
-      try {
-        if (type === 'puppy') {
-          await axios.delete(`/api/puppies/${id}`);
-        } else {
-          await axios.delete(`/api/news/${id}`);
-        }
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting item:', error);
-      }
     }
   };
 
@@ -269,15 +155,6 @@ const OwnerDashboard = () => {
     }
   };
 
-  const handleTogglePuppyStatus = async (puppy) => {
-    try {
-      await axios.put(`/api/puppies/${puppy._id}`, { is_available: !puppy.isAvailable });
-      fetchData();
-    } catch (error) {
-      console.error('Ошибка при смене статуса щенка:', error);
-    }
-  };
-
   if (loading) {
     return (
       <Container>
@@ -298,119 +175,6 @@ const OwnerDashboard = () => {
         </Alert>
 
         <Grid container spacing={4}>
-          {/* Puppies Section */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Pets sx={{ mr: 1 }} />
-                  Щенки ({puppies.length})
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => handleOpenDialog('puppy')}
-                >
-                  Добавить щенка
-                </Button>
-              </Box>
-              
-              {puppies.map((puppy) => (
-                <Card key={puppy._id} sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6">{puppy.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {puppy.breed} • {puppy.age} мес. • {puppy.price.toLocaleString()} ₽
-                    </Typography>
-                    <Chip 
-                      label={puppy.isAvailable ? 'На продаже' : 'Продано'} 
-                      color={puppy.isAvailable ? 'success' : 'default'}
-                      size="small"
-                      sx={{ mt: 1, mr: 1 }}
-                    />
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color={puppy.isAvailable ? 'warning' : 'success'}
-                      onClick={() => handleTogglePuppyStatus(puppy)}
-                      sx={{ mt: 1 }}
-                    >
-                      {puppy.isAvailable ? 'Отметить как продано' : 'Вернуть на продажу'}
-                    </Button>
-                  </CardContent>
-                  <CardActions>
-                    <Button size="small" onClick={() => handleOpenDialog('puppy', puppy)}>
-                      <Edit sx={{ mr: 0.5 }} />
-                      Редактировать
-                    </Button>
-                    <Button size="small" color="error" onClick={() => handleDelete('puppy', puppy._id)}>
-                      <Delete sx={{ mr: 0.5 }} />
-                      Удалить
-                    </Button>
-                  </CardActions>
-                </Card>
-              ))}
-              
-              {puppies.length === 0 && (
-                <Typography color="text.secondary" align="center">
-                  Нет объявлений о щенках
-                </Typography>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* News Section */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Article sx={{ mr: 1 }} />
-                  Новости ({news.length})
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => handleOpenDialog('news')}
-                >
-                  Добавить новость
-                </Button>
-              </Box>
-              
-              {news.map((item) => (
-                <Card key={item._id} sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6">{item.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(item.createdAt).toLocaleDateString('ru-RU')}
-                    </Typography>
-                    <Chip 
-                      label={item.isPublished ? 'Опубликовано' : 'Черновик'} 
-                      color={item.isPublished ? 'success' : 'warning'}
-                      size="small"
-                      sx={{ mt: 1 }}
-                    />
-                  </CardContent>
-                  <CardActions>
-                    <Button size="small" onClick={() => handleOpenDialog('news', item)}>
-                      <Edit sx={{ mr: 0.5 }} />
-                      Редактировать
-                    </Button>
-                    <Button size="small" color="error" onClick={() => handleDelete('news', item._id)}>
-                      <Delete sx={{ mr: 0.5 }} />
-                      Удалить
-                    </Button>
-                  </CardActions>
-                </Card>
-              ))}
-              
-              {news.length === 0 && (
-                <Typography color="text.secondary" align="center">
-                  Нет новостей
-                </Typography>
-              )}
-            </Paper>
-          </Grid>
-
           {/* Dogs Section */}
           <Grid item xs={12}>
             <Paper sx={{ p: 2, mb: 4 }}>
@@ -440,212 +204,73 @@ const OwnerDashboard = () => {
               </Grid>
             </Paper>
           </Grid>
+
+          {/* Puppies Section */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, mb: 4 }}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                <Typography variant="h6"><Pets sx={{ mr: 1 }} /> Щенки на продажу</Typography>
+                <Button variant="contained" startIcon={<Add />} onClick={() => { setEditingItem(null); setFormData({ ...formData, name: '', breed: '', age: '', price: '', description: '', gender: '', color: '', weight: '', vaccinations: false, documents: false }); setSelectedImages([]); setImagePreview([]); setOpenPuppyDialog(true); }}>Добавить щенка</Button>
+              </Box>
+              <Grid container spacing={2}>
+                {puppies.map((puppy) => {
+                  const images = Array.isArray(puppy.images)
+                    ? puppy.images
+                    : (typeof puppy.images === 'string' ? JSON.parse(puppy.images || '[]') : []);
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={puppy.id}>
+                      <Card>
+                        {images.length > 0 && (
+                          <img src={images[0]} alt={puppy.name} style={{ width: '100%', maxHeight: 200, objectFit: 'cover' }} />
+                        )}
+                        <CardContent>
+                          <Typography variant="h6">{puppy.name}</Typography>
+                          <Typography variant="body2">Рост: {puppy.size}</Typography>
+                          <Typography variant="body2">Возраст: {puppy.age}</Typography>
+                          <Typography variant="body2">Цена: {puppy.price} ₽</Typography>
+                          <Typography variant="body2">{puppy.description}</Typography>
+                        </CardContent>
+                        <CardActions>
+                          <IconButton onClick={() => { setEditingItem(puppy); setFormData({ ...formData, ...puppy }); setSelectedImages([]); setImagePreview(images); setOpenPuppyDialog(true); }}><Edit /></IconButton>
+                          <IconButton onClick={async () => { if(window.confirm('Удалить щенка?')) { await axios.delete(`/api/puppies/${puppy.id}`); fetchData(); } }}><Delete /></IconButton>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </Paper>
+          </Grid>
+
+          {/* News Section */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, mb: 4 }}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                <Typography variant="h6"><Article sx={{ mr: 1 }} /> Новости питомника</Typography>
+                <Button variant="contained" startIcon={<Add />} onClick={() => { setEditingItem(null); setFormData({ ...formData, title: '', content: '' }); setNewsImage(null); setOpenNewsDialog(true); }}>Добавить новость</Button>
+              </Box>
+              <Grid container spacing={2}>
+                {news.map((item) => (
+                  <Grid item xs={12} sm={6} md={4} key={item.id}>
+                    <Card>
+                      {item.image && (
+                        <img src={`/${item.image.replace('\\', '/')}`} alt={item.title} style={{ width: '100%', maxHeight: 200, objectFit: 'cover' }} />
+                      )}
+                      <CardContent>
+                        <Typography variant="h6">{item.title}</Typography>
+                        <Typography variant="body2">{item.content}</Typography>
+                      </CardContent>
+                      <CardActions>
+                        <IconButton onClick={() => { setEditingItem(item); setFormData({ ...formData, ...item }); setNewsImage(null); setOpenNewsDialog(true); }}><Edit /></IconButton>
+                        <IconButton onClick={async () => { if(window.confirm('Удалить новость?')) { await axios.delete(`/api/news/${item.id}`); fetchData(); } }}><Delete /></IconButton>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+          </Grid>
         </Grid>
-
-        {/* Puppy Dialog */}
-        <Dialog open={openPuppyDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-          <DialogTitle>
-            {editingItem ? 'Редактировать щенка' : 'Добавить щенка'}
-          </DialogTitle>
-          <DialogContent>
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Название"
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Размер пуделя</InputLabel>
-                    <Select
-                      value={formData.breed}
-                      label="Размер пуделя"
-                      onChange={(e) => setFormData({...formData, breed: e.target.value})}
-                      required
-                    >
-                      <MenuItem value="той">Той-пудель</MenuItem>
-                      <MenuItem value="миниатюрный">Миниатюрный пудель</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Возраст (месяцев)"
-                    type="number"
-                    value={formData.age}
-                    onChange={(e) => setFormData({...formData, age: e.target.value})}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Цена (₽)"
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Пол</InputLabel>
-                    <Select
-                      value={formData.gender}
-                      label="Пол"
-                      onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                      required
-                    >
-                      <MenuItem value="male">Мальчик</MenuItem>
-                      <MenuItem value="female">Девочка</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Цвет"
-                    value={formData.color}
-                    onChange={(e) => setFormData({...formData, color: e.target.value})}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Описание"
-                    multiline
-                    rows={4}
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    required
-                  />
-                </Grid>
-                
-                {/* Поле для загрузки изображений */}
-                <Grid item xs={12}>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Фотографии щенка
-                    </Typography>
-                    <input
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      id="image-upload"
-                      multiple
-                      type="file"
-                      onChange={handleImageChange}
-                    />
-                    <label htmlFor="image-upload">
-                      <Button
-                        variant="outlined"
-                        component="span"
-                        startIcon={<PhotoCamera />}
-                        sx={{ mb: 2 }}
-                      >
-                        Выбрать фотографии
-                      </Button>
-                    </label>
-                    
-                    {/* Превью изображений */}
-                    {imagePreview.length > 0 && (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {imagePreview.map((preview, index) => (
-                          <Box
-                            key={index}
-                            sx={{
-                              position: 'relative',
-                              width: 100,
-                              height: 100,
-                              border: '1px solid #ddd',
-                              borderRadius: 1,
-                              overflow: 'hidden'
-                            }}
-                          >
-                            <img
-                              src={preview}
-                              alt={`Preview ${index + 1}`}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover'
-                              }}
-                            />
-                            <IconButton
-                              size="small"
-                              sx={{
-                                position: 'absolute',
-                                top: 2,
-                                right: 2,
-                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.9)'
-                                }
-                              }}
-                              onClick={() => removeImage(index)}
-                            >
-                              <Close fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
-                </Grid>
-              </Grid>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Отмена</Button>
-            <Button onClick={handleSubmit} variant="contained">
-              {editingItem ? 'Сохранить' : 'Добавить'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* News Dialog */}
-        <Dialog open={openNewsDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-          <DialogTitle>
-            {editingItem ? 'Редактировать новость' : 'Добавить новость'}
-          </DialogTitle>
-          <DialogContent>
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Заголовок"
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Содержание"
-                    multiline
-                    rows={6}
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    required
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Отмена</Button>
-            <Button onClick={handleSubmit} variant="contained">
-              {editingItem ? 'Сохранить' : 'Добавить'}
-            </Button>
-          </DialogActions>
-        </Dialog>
 
         {/* Dog Dialog */}
         <Dialog open={openDogDialog} onClose={handleCloseDogDialog}>
@@ -697,6 +322,120 @@ const OwnerDashboard = () => {
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDogDialog}>Отмена</Button>
+              <Button type="submit" variant="contained">Сохранить</Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+
+        {/* Puppy Dialog */}
+        <Dialog open={openPuppyDialog} onClose={() => setOpenPuppyDialog(false)}>
+          <DialogTitle>{editingItem ? 'Редактировать щенка' : 'Добавить щенка'}</DialogTitle>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const data = new FormData();
+            data.append('name', formData.name);
+            data.append('size', formData.size);
+            data.append('age', formData.age);
+            data.append('price', formData.price);
+            data.append('description', formData.description);
+            data.append('gender', formData.gender);
+            data.append('color', formData.color);
+            data.append('vaccinations', formData.vaccinations);
+            data.append('documents', formData.documents);
+            selectedImages.forEach((img) => data.append('images', img));
+            try {
+              const config = { headers: { 'Content-Type': 'multipart/form-data' } };
+              const token = localStorage.getItem('token');
+              if (token) config.headers['Authorization'] = `Bearer ${token}`;
+              if (editingItem) {
+                await axios.put(`/api/puppies/${editingItem.id}`, data, config);
+              } else {
+                await axios.post('/api/puppies', data, config);
+              }
+              setOpenPuppyDialog(false);
+              fetchData();
+            } catch (err) {
+              let msg = 'Ошибка при сохранении';
+              if (err.response && err.response.data && err.response.data.message) {
+                msg += `: ${err.response.data.message}`;
+                if (err.response.data.errors) {
+                  msg += '\n' + err.response.data.errors.map(e => e.msg).join('\n');
+                }
+              }
+              alert(msg);
+            }
+          }} encType="multipart/form-data">
+            <DialogContent>
+              <TextField margin="dense" label="Имя" name="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} fullWidth required />
+              <FormControl fullWidth sx={{ mt: 2 }}>
+                <InputLabel>Рост</InputLabel>
+                <Select value={formData.size || ''} label="Рост" onChange={e => setFormData({ ...formData, size: e.target.value })} required>
+                  <MenuItem value="Той">Той</MenuItem>
+                  <MenuItem value="Миниатюр">Миниатюр</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField margin="dense" label="Возраст" name="age" value={formData.age} onChange={e => setFormData({ ...formData, age: e.target.value })} fullWidth />
+              <TextField margin="dense" label="Цена" name="price" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} fullWidth />
+              <TextField margin="dense" label="Описание" name="description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} fullWidth multiline />
+              <TextField margin="dense" label="Окрас" name="color" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} fullWidth />
+              <Box sx={{ mt: 2 }}>
+                <Button variant="contained" component="label" startIcon={<PhotoCamera />}>
+                  Загрузить фото
+                  <input type="file" hidden multiple accept="image/*" onChange={e => { setSelectedImages(Array.from(e.target.files)); setImagePreview(Array.from(e.target.files).map(file => URL.createObjectURL(file))); }} />
+                </Button>
+                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                  {imagePreview.map((img, idx) => <img key={idx} src={img} alt="preview" style={{ maxWidth: 80, maxHeight: 80, borderRadius: 8 }} />)}
+                </Box>
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenPuppyDialog(false)}>Отмена</Button>
+              <Button type="submit" variant="contained">Сохранить</Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+
+        {/* News Dialog */}
+        <Dialog open={openNewsDialog} onClose={() => setOpenNewsDialog(false)}>
+          <DialogTitle>{editingItem ? 'Редактировать новость' : 'Добавить новость'}</DialogTitle>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const data = new FormData();
+            data.append('title', formData.title);
+            data.append('content', formData.content);
+            if (newsImage) data.append('image', newsImage);
+            try {
+              if (editingItem) {
+                await axios.put(`/api/news/${editingItem.id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+              } else {
+                await axios.post('/api/news', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+              }
+              setOpenNewsDialog(false);
+              fetchData();
+            } catch (err) {
+              let msg = 'Ошибка при сохранении';
+              if (err.response && err.response.data && err.response.data.message) {
+                msg += `: ${err.response.data.message}`;
+                if (err.response.data.errors) {
+                  msg += '\n' + err.response.data.errors.map(e => e.msg).join('\n');
+                }
+              }
+              alert(msg);
+            }
+          }} encType="multipart/form-data">
+            <DialogContent>
+              <TextField margin="dense" label="Заголовок" name="title" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} fullWidth required />
+              <TextField margin="dense" label="Текст новости" name="content" value={formData.content} onChange={e => setFormData({ ...formData, content: e.target.value })} fullWidth multiline />
+              <Box sx={{ mt: 2 }}>
+                <Button variant="contained" component="label" startIcon={<PhotoCamera />}>
+                  Загрузить фото
+                  <input type="file" hidden accept="image/*" onChange={e => setNewsImage(e.target.files[0])} />
+                </Button>
+                {newsImage && <Box mt={2}><img src={URL.createObjectURL(newsImage)} alt="preview" style={{ maxWidth: 150 }} /></Box>}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenNewsDialog(false)}>Отмена</Button>
               <Button type="submit" variant="contained">Сохранить</Button>
             </DialogActions>
           </form>

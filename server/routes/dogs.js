@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { Dog } = require('../models');
-const { auth } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 
-// Настройка хранения файлов для фото
+// Настройка хранения файлов д фото
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/');
@@ -38,9 +37,8 @@ router.get('/:id', async (req, res) => {
 });
 
 // Создать собаку (только для админа)
-router.post('/', auth, upload.single('photo'), async (req, res) => {
+router.post('/', upload.single('photo'), async (req, res) => {
   try {
-    if (!req.user.isAdmin) return res.status(403).json({ error: 'Нет доступа' });
     const { name, achievements, description } = req.body;
     const photo = req.file ? req.file.path : null;
     const dog = await Dog.create({ name, achievements, description, photo });
@@ -51,9 +49,8 @@ router.post('/', auth, upload.single('photo'), async (req, res) => {
 });
 
 // Обновить собаку (только для админа)
-router.put('/:id', auth, upload.single('photo'), async (req, res) => {
+router.put('/:id', upload.single('photo'), async (req, res) => {
   try {
-    if (!req.user.isAdmin) return res.status(403).json({ error: 'Нет доступа' });
     const dog = await Dog.findByPk(req.params.id);
     if (!dog) return res.status(404).json({ error: 'Собака не найдена' });
     const { name, achievements, description } = req.body;
@@ -69,9 +66,8 @@ router.put('/:id', auth, upload.single('photo'), async (req, res) => {
 });
 
 // Удалить собаку (только для админа)
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    if (!req.user.isAdmin) return res.status(403).json({ error: 'Нет доступа' });
     const dog = await Dog.findByPk(req.params.id);
     if (!dog) return res.status(404).json({ error: 'Собака не найдена' });
     await dog.destroy();

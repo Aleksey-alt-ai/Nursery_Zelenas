@@ -7,7 +7,7 @@ const { auth, ownerAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Configure multer for image uploads
+// Configure multer for image upload (single image)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, '../../uploads'));
@@ -20,14 +20,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -93,50 +90,33 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create news (owner only)
-router.post('/', ownerAuth, upload.single('image'), [
-  body('title').trim().isLength({ min: 3 }).withMessage('Заголовок должен содержать минимум 3 символа'),
-  body('content').trim().isLength({ min: 10 }).withMessage('Содержание должно содержать минимум 10 символов')
+router.post('/', auth, upload.single('image'), [
+  body('title').trim().isLength({ min: 3 }).withMessage('Заголовок минимум 3 символа'),
+  body('content').trim().isLength({ min: 10 }).withMessage('Содержание минимум 10 символов')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Ошибка валидации',
-        errors: errors.array() 
-      });
+      return res.status(400).json({ message: 'Ошибка валидации', errors: errors.array() });
     }
-
-    const newsData = {
-      ...req.body,
-      author_id: req.user.id
-    };
-
+    // Фото не обязательно
+    let image = null;
     if (req.file) {
-      newsData.image = `/uploads/${req.file.filename}`;
+      image = `/uploads/${req.file.filename}`;
     }
-
-    const news = await News.create(newsData);
-    
-    const populatedNews = await News.findByPk(news.id, {
-      include: [{
-        model: User,
-        as: 'author',
-        attributes: ['name']
-      }]
+    const news = await News.create({
+      title: req.body.title,
+      content: req.body.content,
+      image
     });
-
-    res.status(201).json({
-      message: 'Новость создана успешно',
-      news: populatedNews
-    });
-  } catch (error) {
-    console.error('Create news error:', error);
-    res.status(500).json({ message: 'Ошибка при создании новости' });
+    res.status(201).json({ message: 'Новость добавлена', news });
+  } catch (err) {
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
 // Update news (owner only)
-router.put('/:id', ownerAuth, upload.single('image'), [
+router.put('/:id', upload.single('image'), [
   body('title').optional().trim().isLength({ min: 3 }).withMessage('Заголовок должен содержать минимум 3 символа'),
   body('content').optional().trim().isLength({ min: 10 }).withMessage('Содержание должно содержать минимум 10 символов')
 ], async (req, res) => {
@@ -186,29 +166,19 @@ router.put('/:id', ownerAuth, upload.single('image'), [
 });
 
 // Delete news (owner only)
-router.delete('/:id', ownerAuth, async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const news = await News.findByPk(req.params.id);
-    
-    if (!news) {
-      return res.status(404).json({ message: 'Новость не найдена' });
-    }
-
-    if (news.author_id !== req.user.id) {
-      return res.status(403).json({ message: 'Нет прав для удаления этой новости' });
-    }
-
+    if (!news) return res.status(404).json({ message: 'Новость не найдена' });
     await news.destroy();
-
-    res.json({ message: 'Новость удалена успешно' });
-  } catch (error) {
-    console.error('Delete news error:', error);
-    res.status(500).json({ message: 'Ошибка при удалении новости' });
+    res.json({ message: 'Новость удалена' });
+  } catch (err) {
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
 // Get owner's news
-router.get('/owner/my', ownerAuth, async (req, res) => {
+router.get('/owner/my', async (req, res) => {
   try {
     const news = await News.findAll({
       where: { author_id: req.user.id },

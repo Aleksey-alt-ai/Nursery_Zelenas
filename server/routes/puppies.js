@@ -8,7 +8,7 @@ const { auth, ownerAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Configure multer for image uploads
+// Configure multer for image upload (single image)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, '../../uploads'));
@@ -21,14 +21,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -40,10 +37,9 @@ const upload = multer({
 // Get all puppies (public)
 router.get('/', async (req, res) => {
   try {
-    const { breed, gender, minPrice, maxPrice, available } = req.query;
+    const { gender, minPrice, maxPrice, available, size } = req.query;
     const where = { is_available: true };
-
-    if (breed) where.breed = { [Op.like]: `%${breed}%` };
+    if (size) where.size = size;
     if (gender) where.gender = gender;
     if (minPrice || maxPrice) {
       where.price = {};
@@ -92,58 +88,41 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create puppy (owner only)
-router.post('/', ownerAuth, upload.array('images', 5), [
-  body('name').trim().isLength({ min: 3 }).withMessage('Имя должно содержать минимум 3 символа'),
-  body('breed').trim().notEmpty().withMessage('Порода обязательна'),
-  body('age').isInt({ min: 0 }).withMessage('Возраст должен быть положительным числом'),
-  body('price').isFloat({ min: 0 }).withMessage('Цена должна быть положительным числом'),
-  body('description').trim().isLength({ min: 10 }).withMessage('Описание должно содержать минимум 10 символов'),
-  body('gender').isIn(['male', 'female']).withMessage('Неверный пол'),
-  body('color').trim().notEmpty().withMessage('Цвет обязателен')
+router.post('/', auth, upload.array('images', 5), [
+  body('name').trim().isLength({ min: 3 }).withMessage('Имя минимум 3 символа'),
+  body('size').notEmpty().withMessage('Рост обязателен'),
+  body('age').isInt({ min: 0 }).withMessage('Возраст — положительное число'),
+  body('price').isFloat({ min: 0 }).withMessage('Цена — положительное число'),
+  body('description').trim().isLength({ min: 10 }).withMessage('Описание минимум 10 символов'),
+  body('gender').isIn(['male', 'female']).withMessage('Пол: male/female'),
+  body('color').notEmpty().withMessage('Цвет обязателен')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Ошибка валидации',
-        errors: errors.array() 
-      });
+      return res.status(400).json({ message: 'Ошибка валидации', errors: errors.array() });
     }
-
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ message: 'Необходимо загрузить хотя бы одно изображение' });
+      return res.status(400).json({ message: 'Загрузите хотя бы одно фото' });
     }
-
     const images = req.files.map(file => `/uploads/${file.filename}`);
-    
     const puppy = await Puppy.create({
       ...req.body,
-      images,
+      age: Number(req.body.age),
+      price: Number(req.body.price),
+      images: JSON.stringify(images),
       owner_id: req.user.id
     });
-    
-    const populatedPuppy = await Puppy.findByPk(puppy.id, {
-      include: [{
-        model: User,
-        as: 'owner',
-        attributes: ['name', 'phone']
-      }]
-    });
-
-    res.status(201).json({
-      message: 'Объявление создано успешно',
-      puppy: populatedPuppy
-    });
-  } catch (error) {
-    console.error('Create puppy error:', error);
-    res.status(500).json({ message: 'Ошибка при создании объявления' });
+    res.status(201).json({ message: 'Щенок добавлен', puppy });
+  } catch (err) {
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
 // Update puppy (owner only)
-router.put('/:id', ownerAuth, upload.array('images', 5), [
+router.put('/:id', auth, upload.array('images', 5), [
   body('name').optional().trim().isLength({ min: 3 }).withMessage('Имя должно содержать минимум 3 символа'),
-  body('breed').optional().trim().notEmpty().withMessage('Порода обязательна'),
+  body('size').optional().notEmpty().withMessage('Рост обязателен'),
   body('age').optional().isInt({ min: 0 }).withMessage('Возраст должен быть положительным числом'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Цена должна быть положительным числом'),
   body('description').optional().trim().isLength({ min: 10 }).withMessage('Описание должно содержать минимум 10 символов'),
@@ -173,7 +152,7 @@ router.put('/:id', ownerAuth, upload.array('images', 5), [
     
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map(file => `/uploads/${file.filename}`);
-      updateData.images = newImages;
+      updateData.images = JSON.stringify(newImages);
     }
 
     await puppy.update(updateData);
@@ -197,7 +176,7 @@ router.put('/:id', ownerAuth, upload.array('images', 5), [
 });
 
 // Delete puppy (owner only)
-router.delete('/:id', ownerAuth, async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const puppy = await Puppy.findByPk(req.params.id);
     
@@ -219,7 +198,7 @@ router.delete('/:id', ownerAuth, async (req, res) => {
 });
 
 // Get owner's puppies
-router.get('/owner/my', ownerAuth, async (req, res) => {
+router.get('/owner/my', async (req, res) => {
   try {
     const puppies = await Puppy.findAll({
       where: { owner_id: req.user.id },

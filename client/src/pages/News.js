@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Typography,
@@ -7,45 +7,49 @@ import {
   CardContent,
   CardMedia,
   Box,
-  Chip,
-  Pagination
+  TextField,
+  Button
 } from '@mui/material';
-import { Link } from 'react-router-dom';
-import axios from 'axios';
 
-const News = () => {
+function News() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchNews();
-  }, [page]);
+  }, []);
 
-  const fetchNews = async () => {
-    try {
-      const response = await axios.get(`/api/news?page=${page}&limit=9`);
-      setNews(response.data.news);
-      setTotalPages(response.data.totalPages);
-    } catch (error) {
-      console.error('Error fetching news:', error);
-    } finally {
-      setLoading(false);
-    }
+  const fetchNews = () => {
+    setLoading(true);
+    fetch('/api/news')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data.news)) {
+          setNews(data.news);
+        } else if (Array.isArray(data)) {
+          setNews(data);
+        } else {
+          setNews([]);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setNews([]);
+        setLoading(false);
+      });
   };
 
-  const handlePageChange = (event, value) => {
-    setPage(value);
+  const handleDelete = async (id) => {
+    if (!window.confirm('Удалить новость?')) return;
+    await fetch(`/api/news/${id}`, { method: 'DELETE' });
+    fetchNews();
   };
 
-  if (loading) {
-    return (
-      <Container>
-        <Typography>Загрузка...</Typography>
-      </Container>
-    );
-  }
+  if (loading) return (
+    <Container>
+      <Typography>Загрузка...</Typography>
+    </Container>
+  );
 
   return (
     <Container maxWidth="lg">
@@ -53,72 +57,46 @@ const News = () => {
         <Typography variant="h3" component="h1" gutterBottom align="center">
           Новости питомника
         </Typography>
-
         <Grid container spacing={4}>
           {news.map((item) => (
-            <Grid item xs={12} md={4} key={item._id}>
-              <Card 
-                component={Link} 
-                to={`/news/${item._id}`}
-                sx={{ 
-                  height: '100%', 
-                  textDecoration: 'none',
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                  }
-                }}
-              >
+            <Grid item xs={12} sm={6} md={4} key={item.id || item._id}>
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                 {item.image && (
                   <CardMedia
                     component="img"
                     height="200"
-                    image={item.image}
+                    image={item.image.startsWith('/') ? item.image : `/${item.image}`}
                     alt={item.title}
                   />
                 )}
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" gutterBottom align="center">
                     {item.title}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    {item.content.substring(0, 150)}...
+                  <Typography variant="body2" color="text.secondary" align="center" paragraph>
+                    {item.content}
                   </Typography>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(item.createdAt).toLocaleDateString('ru-RU')}
-                    </Typography>
-                    {item.tags && item.tags.length > 0 && (
-                      <Chip label={item.tags[0]} size="small" />
-                    )}
-                  </Box>
+                  <Typography variant="caption" color="text.secondary" align="center" display="block">
+                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString('ru-RU') : ''}
+                  </Typography>
+                  <Button color="error" variant="outlined" size="small" sx={{ mt: 2 }} onClick={() => handleDelete(item.id || item._id)}>
+                    Удалить
+                  </Button>
                 </CardContent>
               </Card>
             </Grid>
           ))}
         </Grid>
-
         {news.length === 0 && (
           <Box textAlign="center" sx={{ mt: 4 }}>
             <Typography variant="h6" color="text.secondary">
-              Новости не найдены
+              Пока нет новостей.
             </Typography>
-          </Box>
-        )}
-
-        {totalPages > 1 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <Pagination 
-              count={totalPages} 
-              page={page} 
-              onChange={handlePageChange} 
-              color="primary" 
-            />
           </Box>
         )}
       </Box>
     </Container>
   );
-};
+}
 
 export default News; 

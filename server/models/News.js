@@ -23,14 +23,6 @@ const News = sequelize.define('News', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
-  author_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
-  }
 }, {
   tableName: 'news'
 });
